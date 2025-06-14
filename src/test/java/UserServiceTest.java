@@ -33,7 +33,7 @@ public class UserServiceTest {
         request.setPhone("13812345678");
         request.setBirthday(LocalDate.of(1990, 1, 1));
         request.setHireDate(LocalDate.now());
-        request.setRoles(Set.of(User.Role.TECHNICIAN));
+        request.setRoles(Set.of(User.Role.MASSAGE_THERAPIST));
 
         // 执行测试
         UserDTO.UserResponse response = userService.createUser(request);
@@ -47,7 +47,7 @@ public class UserServiceTest {
         assertEquals("test@example.com", response.getEmail());
         assertEquals("13812345678", response.getPhone());
         assertEquals(User.EmploymentStatus.ACTIVE, response.getEmploymentStatus());
-        assertTrue(response.getRoles().contains(User.Role.TECHNICIAN));
+        assertTrue(response.getRoles().contains(User.Role.MASSAGE_THERAPIST));
     }
 
     @Test

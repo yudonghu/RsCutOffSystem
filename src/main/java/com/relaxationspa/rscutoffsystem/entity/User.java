@@ -24,7 +24,7 @@ public class User {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    // 移除 @GeneratedValue 注解，我们将在服务层手动设置员工编号
     @Column(name = "employee_number", nullable = false, unique = true)
     private Long employeeNumber;
 
@@ -69,10 +69,10 @@ public class User {
     }
 
     public enum Role {
-        MANAGER,        // 管理
-        TECHNICIAN,     // 技师
-        RECEPTIONIST,   // 前台
-        OWNER          // 老板
+        MANAGER,           // 管理
+        MASSAGE_THERAPIST, // 按摩师
+        RECEPTIONIST,      // 前台
+        OWNER             // 老板
     }
 
     // 构造函数
