@@ -117,6 +117,11 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
     @Query("SELECT COUNT(r) FROM Report r WHERE r.generatedByUuid = :userUuid")
     Long countByUser(@Param("userUuid") UUID userUuid);
 
+    // 检查是否存在指定文件路径的报表
+    boolean existsByFilePath(String filePath);
+
+    // 注释掉或删除以下有问题的方法：
+    /*
     // 计算平均生成时间（毫秒）
     @Query("SELECT AVG(r.completedAt - r.createdAt) FROM Report r WHERE r.status = 'COMPLETED' AND r.completedAt IS NOT NULL")
     Double calculateAverageGenerationTime();
@@ -144,7 +149,5 @@ public interface ReportRepository extends JpaRepository<Report, UUID> {
     @Query("SELECT r FROM Report r WHERE YEAR(r.createdAt) = YEAR(CURRENT_DATE) " +
             "AND MONTH(r.createdAt) = MONTH(CURRENT_DATE) ORDER BY r.createdAt DESC")
     List<Report> findThisMonthReports();
-
-    // 检查是否存在指定文件路径的报表
-    boolean existsByFilePath(String filePath);
+    */
 }

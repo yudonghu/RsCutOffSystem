@@ -181,7 +181,10 @@ public class ReportService {
      */
     @Transactional(readOnly = true)
     public List<ReportDTO.ReportResponse> getTodayReports() {
-        return reportRepository.findTodayReports().stream()
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59);
+
+        return reportRepository.findReportsCreatedBetween(startOfDay, endOfDay).stream()
                 .map(ReportDTO.ReportResponse::new)
                 .collect(Collectors.toList());
     }
@@ -191,7 +194,12 @@ public class ReportService {
      */
     @Transactional(readOnly = true)
     public List<ReportDTO.ReportResponse> getThisWeekReports() {
-        return reportRepository.findThisWeekReports().stream()
+        LocalDate today = LocalDate.now();
+        LocalDate startOfWeek = today.minusDays(today.getDayOfWeek().getValue() - 1);
+        LocalDateTime startOfWeekTime = startOfWeek.atStartOfDay();
+        LocalDateTime endOfWeekTime = today.atTime(23, 59, 59);
+
+        return reportRepository.findReportsCreatedBetween(startOfWeekTime, endOfWeekTime).stream()
                 .map(ReportDTO.ReportResponse::new)
                 .collect(Collectors.toList());
     }
@@ -201,7 +209,12 @@ public class ReportService {
      */
     @Transactional(readOnly = true)
     public List<ReportDTO.ReportResponse> getThisMonthReports() {
-        return reportRepository.findThisMonthReports().stream()
+        LocalDate today = LocalDate.now();
+        LocalDate startOfMonth = today.withDayOfMonth(1);
+        LocalDateTime startOfMonthTime = startOfMonth.atStartOfDay();
+        LocalDateTime endOfMonthTime = today.atTime(23, 59, 59);
+
+        return reportRepository.findReportsCreatedBetween(startOfMonthTime, endOfMonthTime).stream()
                 .map(ReportDTO.ReportResponse::new)
                 .collect(Collectors.toList());
     }
@@ -410,7 +423,7 @@ public class ReportService {
         List<ReportDTO.CategoryBreakdown> incomeBreakdown = generateCategoryBreakdown(allItems, true, totalIncome);
         reportData.setIncomeBreakdown(incomeBreakdown);
 
-        // 支出分类汇总  
+        // 支出分类汇总
         List<ReportDTO.CategoryBreakdown> expenseBreakdown = generateCategoryBreakdown(allItems, false, totalExpense);
         reportData.setExpenseBreakdown(expenseBreakdown);
 
@@ -605,15 +618,30 @@ public class ReportService {
             }
         }
 
-        // 性能统计
-        Double avgTime = reportRepository.calculateAverageGenerationTime();
-        stats.setAverageGenerationTimeMs(avgTime);
+        // 性能统计 - 使用Java代码计算
+        List<Report> completedReports = reportRepository.findAllCompletedReports();
+        if (!completedReports.isEmpty()) {
+            // 计算平均生成时间
+            double avgTime = completedReports.stream()
+                    .mapToLong(Report::getGenerationTime)
+                    .average()
+                    .orElse(0.0);
+            stats.setAverageGenerationTimeMs(avgTime);
 
-        reportRepository.findLongestGenerationTimeReport()
-                .ifPresent(report -> stats.setLongestGenerationTimeMs(report.getGenerationTime()));
+            // 计算最长生成时间
+            long maxTime = completedReports.stream()
+                    .mapToLong(Report::getGenerationTime)
+                    .max()
+                    .orElse(0L);
+            stats.setLongestGenerationTimeMs(maxTime);
 
-        reportRepository.findShortestGenerationTimeReport()
-                .ifPresent(report -> stats.setShortestGenerationTimeMs(report.getGenerationTime()));
+            // 计算最短生成时间
+            long minTime = completedReports.stream()
+                    .mapToLong(Report::getGenerationTime)
+                    .min()
+                    .orElse(0L);
+            stats.setShortestGenerationTimeMs(minTime);
+        }
 
         // 计算成功率
         Long completed = stats.getCompletedReports() != null ? stats.getCompletedReports() : 0L;
