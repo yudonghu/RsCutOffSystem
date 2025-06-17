@@ -20,7 +20,7 @@ public class CustomerDTO {
         @NotBlank(message = "客户姓名不能为空")
         private String name;
 
-        @Pattern(regexp = "^[1-9]\\d{10}$", message = "请输入有效的手机号码")
+        @Pattern(regexp = "^\\d{10}$", message = "请输入有效的手机号码")
         private String phone;
 
         @Email(message = "请输入有效的邮箱地址")
