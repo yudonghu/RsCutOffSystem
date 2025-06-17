@@ -25,7 +25,7 @@ public class UserDTO {
 
         private LocalDate birthday;
 
-        @Pattern(regexp = "^[1-9]\\d{10}$", message = "请输入有效的手机号码")
+        @Pattern(regexp = "^\\d{10}$", message = "请输入有效的手机号码")
         private String phone;
 
         @Email(message = "请输入有效的邮箱地址")
