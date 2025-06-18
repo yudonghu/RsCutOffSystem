@@ -38,8 +38,13 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     // 根据关联客户查找
     List<Transaction> findByRelatedCustomerUuid(UUID customerUuid);
 
-    // 根据关联员工查找
-    List<Transaction> findByRelatedUserUuid(UUID userUuid);
+    // 修改：根据关联员工查找（支持多个员工的情况）
+    @Query("SELECT t FROM Transaction t JOIN t.relatedUserUuids u WHERE u = :userUuid")
+    List<Transaction> findByRelatedUserUuid(@Param("userUuid") UUID userUuid);
+
+    // 新增：根据多个员工查找交易
+    @Query("SELECT DISTINCT t FROM Transaction t JOIN t.relatedUserUuids u WHERE u IN :userUuids")
+    List<Transaction> findByRelatedUserUuids(@Param("userUuids") List<UUID> userUuids);
 
     // 查找已确认的交易
     @Query("SELECT t FROM Transaction t WHERE t.status = 'CONFIRMED'")
@@ -107,10 +112,29 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
             "ORDER BY t.transactionDate DESC")
     List<Transaction> findCustomerTransactionHistory(@Param("customerUuid") UUID customerUuid);
 
-    // 查找指定员工操作的所有交易
-    @Query("SELECT t FROM Transaction t WHERE t.relatedUserUuid = :userUuid " +
+    // 修改：查找指定员工操作的所有交易（支持多员工查询）
+    @Query("SELECT t FROM Transaction t JOIN t.relatedUserUuids u WHERE u = :userUuid " +
             "ORDER BY t.transactionDate DESC")
     List<Transaction> findUserTransactionHistory(@Param("userUuid") UUID userUuid);
+
+    // 新增：查找多个员工参与的交易历史
+    @Query("SELECT DISTINCT t FROM Transaction t JOIN t.relatedUserUuids u WHERE u IN :userUuids " +
+            "ORDER BY t.transactionDate DESC")
+    List<Transaction> findMultipleUsersTransactionHistory(@Param("userUuids") List<UUID> userUuids);
+
+    // 新增：按员工分组统计交易数量
+    @Query("SELECT u, COUNT(t) FROM Transaction t JOIN t.relatedUserUuids u " +
+            "WHERE t.transactionDate BETWEEN :startDate AND :endDate AND t.status = 'CONFIRMED' " +
+            "GROUP BY u")
+    List<Object[]> countTransactionsByUser(@Param("startDate") LocalDate startDate,
+                                           @Param("endDate") LocalDate endDate);
+
+    // 新增：按员工分组统计交易金额
+    @Query("SELECT u, COALESCE(SUM(t.totalAmount), 0) FROM Transaction t JOIN t.relatedUserUuids u " +
+            "WHERE t.transactionDate BETWEEN :startDate AND :endDate AND t.status = 'CONFIRMED' " +
+            "GROUP BY u")
+    List<Object[]> sumTransactionAmountsByUser(@Param("startDate") LocalDate startDate,
+                                               @Param("endDate") LocalDate endDate);
 
     // 查找大额交易（超过指定金额）
     @Query("SELECT t FROM Transaction t WHERE t.totalAmount >= :amount AND t.status = 'CONFIRMED' " +
@@ -135,4 +159,16 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     // 查找最近的交易
     @Query("SELECT t FROM Transaction t ORDER BY t.createdAt DESC")
     List<Transaction> findRecentTransactions();
+
+    // 新增：检查是否有员工参与了某个交易
+    @Query("SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END FROM Transaction t JOIN t.relatedUserUuids u " +
+            "WHERE t.uuid = :transactionUuid AND u = :userUuid")
+    boolean isUserRelatedToTransaction(@Param("transactionUuid") UUID transactionUuid,
+                                       @Param("userUuid") UUID userUuid);
+
+    // 新增：查找某个员工在指定日期参与的交易
+    @Query("SELECT t FROM Transaction t JOIN t.relatedUserUuids u " +
+            "WHERE u = :userUuid AND t.transactionDate = :date AND t.status = 'CONFIRMED'")
+    List<Transaction> findUserTransactionsOnDate(@Param("userUuid") UUID userUuid,
+                                                 @Param("date") LocalDate date);
 }

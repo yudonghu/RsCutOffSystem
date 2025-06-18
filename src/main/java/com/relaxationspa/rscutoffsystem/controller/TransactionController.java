@@ -15,8 +15,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -283,5 +285,84 @@ public class TransactionController {
     public ResponseEntity<Boolean> transactionExists(@PathVariable UUID uuid) {
         boolean exists = transactionService.transactionExists(uuid);
         return ResponseEntity.ok(exists);
+    }
+    /**
+     * 根据多个员工获取交易历史
+     */
+    @GetMapping("/users/history")
+    public ResponseEntity<List<TransactionDTO.TransactionResponse>> getMultipleUsersTransactionHistory(
+            @RequestParam List<UUID> userUuids) {
+        List<TransactionDTO.TransactionResponse> transactions =
+                transactionService.getMultipleUsersTransactionHistory(userUuids);
+        return ResponseEntity.ok(transactions);
+    }
+
+    /**
+     * 获取指定员工在指定日期的交易
+     */
+    @GetMapping("/users/{userUuid}/date/{date}")
+    public ResponseEntity<List<TransactionDTO.TransactionResponse>> getUserTransactionsOnDate(
+            @PathVariable UUID userUuid,
+            @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<TransactionDTO.TransactionResponse> transactions =
+                transactionService.getUserTransactionsOnDate(userUuid, date);
+        return ResponseEntity.ok(transactions);
+    }
+
+    /**
+     * 检查员工是否参与了某个交易
+     */
+    @GetMapping("/{transactionUuid}/users/{userUuid}/exists")
+    public ResponseEntity<Boolean> isUserRelatedToTransaction(
+            @PathVariable UUID transactionUuid,
+            @PathVariable UUID userUuid) {
+        boolean isRelated = transactionService.isUserRelatedToTransaction(transactionUuid, userUuid);
+        return ResponseEntity.ok(isRelated);
+    }
+
+    /**
+     * 向交易添加员工
+     */
+    @PostMapping("/{transactionUuid}/users/{userUuid}")
+    public ResponseEntity<TransactionDTO.TransactionResponse> addUserToTransaction(
+            @PathVariable UUID transactionUuid,
+            @PathVariable UUID userUuid) {
+        TransactionDTO.TransactionResponse response =
+                transactionService.addUserToTransaction(transactionUuid, userUuid);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 从交易中移除员工
+     */
+    @DeleteMapping("/{transactionUuid}/users/{userUuid}")
+    public ResponseEntity<TransactionDTO.TransactionResponse> removeUserFromTransaction(
+            @PathVariable UUID transactionUuid,
+            @PathVariable UUID userUuid) {
+        TransactionDTO.TransactionResponse response =
+                transactionService.removeUserFromTransaction(transactionUuid, userUuid);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 按员工统计交易数量
+     */
+    @GetMapping("/stats/count-by-user")
+    public ResponseEntity<Map<UUID, Long>> getTransactionCountByUser(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        Map<UUID, Long> stats = transactionService.getTransactionCountByUser(startDate, endDate);
+        return ResponseEntity.ok(stats);
+    }
+
+    /**
+     * 按员工统计交易金额
+     */
+    @GetMapping("/stats/amount-by-user")
+    public ResponseEntity<Map<UUID, BigDecimal>> getTransactionAmountByUser(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        Map<UUID, BigDecimal> stats = transactionService.getTransactionAmountByUser(startDate, endDate);
+        return ResponseEntity.ok(stats);
     }
 }

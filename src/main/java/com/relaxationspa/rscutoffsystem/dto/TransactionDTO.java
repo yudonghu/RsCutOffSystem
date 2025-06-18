@@ -12,6 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 public class TransactionDTO {
@@ -30,8 +31,9 @@ public class TransactionDTO {
 
         private UUID relatedCustomerUuid;
 
-        @NotNull(message = "操作员工不能为空")
-        private UUID relatedUserUuid;
+        // 修改：从单个UUID改为Set<UUID>
+        @NotEmpty(message = "操作员工不能为空")
+        private Set<UUID> relatedUserUuids;
 
         @NotNull(message = "支付方式不能为空")
         private Transaction.PaymentMethod paymentMethod;
@@ -86,12 +88,24 @@ public class TransactionDTO {
             this.relatedCustomerUuid = relatedCustomerUuid;
         }
 
-        public UUID getRelatedUserUuid() {
-            return relatedUserUuid;
+        public Set<UUID> getRelatedUserUuids() {
+            return relatedUserUuids;
         }
 
+        public void setRelatedUserUuids(Set<UUID> relatedUserUuids) {
+            this.relatedUserUuids = relatedUserUuids;
+        }
+
+        // 保留旧方法以兼容现有代码（已标记为过时）
+        @Deprecated
+        public UUID getRelatedUserUuid() {
+            return relatedUserUuids != null && !relatedUserUuids.isEmpty() ?
+                    relatedUserUuids.iterator().next() : null;
+        }
+
+        @Deprecated
         public void setRelatedUserUuid(UUID relatedUserUuid) {
-            this.relatedUserUuid = relatedUserUuid;
+            this.relatedUserUuids = Set.of(relatedUserUuid);
         }
 
         public Transaction.PaymentMethod getPaymentMethod() {
@@ -180,6 +194,9 @@ public class TransactionDTO {
         private String paymentReference;
         private Transaction.TransactionStatus status;
 
+        // 修改：从单个UUID改为Set<UUID>
+        private Set<UUID> relatedUserUuids;
+
         @Valid
         private List<TransactionItemRequest> items;
 
@@ -214,6 +231,14 @@ public class TransactionDTO {
 
         public void setRelatedCustomerUuid(UUID relatedCustomerUuid) {
             this.relatedCustomerUuid = relatedCustomerUuid;
+        }
+
+        public Set<UUID> getRelatedUserUuids() {
+            return relatedUserUuids;
+        }
+
+        public void setRelatedUserUuids(Set<UUID> relatedUserUuids) {
+            this.relatedUserUuids = relatedUserUuids;
         }
 
         public Transaction.PaymentMethod getPaymentMethod() {
@@ -261,7 +286,10 @@ public class TransactionDTO {
         private String description;
         private String notes;
         private UUID relatedCustomerUuid;
-        private UUID relatedUserUuid;
+
+        // 修改：从单个UUID改为Set<UUID>
+        private Set<UUID> relatedUserUuids;
+
         private Transaction.PaymentMethod paymentMethod;
         private String paymentReference;
         private Transaction.TransactionStatus status;
@@ -282,7 +310,7 @@ public class TransactionDTO {
             this.description = transaction.getDescription();
             this.notes = transaction.getNotes();
             this.relatedCustomerUuid = transaction.getRelatedCustomerUuid();
-            this.relatedUserUuid = transaction.getRelatedUserUuid();
+            this.relatedUserUuids = transaction.getRelatedUserUuids();
             this.paymentMethod = transaction.getPaymentMethod();
             this.paymentReference = transaction.getPaymentReference();
             this.status = transaction.getStatus();
@@ -366,12 +394,24 @@ public class TransactionDTO {
             this.relatedCustomerUuid = relatedCustomerUuid;
         }
 
-        public UUID getRelatedUserUuid() {
-            return relatedUserUuid;
+        public Set<UUID> getRelatedUserUuids() {
+            return relatedUserUuids;
         }
 
+        public void setRelatedUserUuids(Set<UUID> relatedUserUuids) {
+            this.relatedUserUuids = relatedUserUuids;
+        }
+
+        // 保留旧方法以兼容现有代码（已标记为过时）
+        @Deprecated
+        public UUID getRelatedUserUuid() {
+            return relatedUserUuids != null && !relatedUserUuids.isEmpty() ?
+                    relatedUserUuids.iterator().next() : null;
+        }
+
+        @Deprecated
         public void setRelatedUserUuid(UUID relatedUserUuid) {
-            this.relatedUserUuid = relatedUserUuid;
+            this.relatedUserUuids = Set.of(relatedUserUuid);
         }
 
         public Transaction.PaymentMethod getPaymentMethod() {

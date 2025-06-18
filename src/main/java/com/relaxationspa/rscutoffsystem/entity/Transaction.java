@@ -9,7 +9,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -49,8 +51,12 @@ public class Transaction {
     @Column(name = "related_customer_uuid")
     private UUID relatedCustomerUuid;
 
-    @Column(name = "related_user_uuid", nullable = false)
-    private UUID relatedUserUuid;
+    // 修改：从单个UUID改为多对多关系
+    @ElementCollection
+    @CollectionTable(name = "transaction_users",
+            joinColumns = @JoinColumn(name = "transaction_uuid"))
+    @Column(name = "user_uuid")
+    private Set<UUID> relatedUserUuids = new HashSet<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)
@@ -103,6 +109,7 @@ public class Transaction {
         this.transactionDate = LocalDate.now();
         this.status = TransactionStatus.PENDING;
         this.isIncludedInCutOff = false;
+        this.relatedUserUuids = new HashSet<>();
     }
 
     // 业务方法
@@ -132,6 +139,25 @@ public class Transaction {
 
     public boolean canBeModified() {
         return this.status != TransactionStatus.CANCELLED && !this.isIncludedInCutOff;
+    }
+
+    // 新增：用户管理方法
+    public void addRelatedUser(UUID userUuid) {
+        if (userUuid != null) {
+            this.relatedUserUuids.add(userUuid);
+        }
+    }
+
+    public void removeRelatedUser(UUID userUuid) {
+        this.relatedUserUuids.remove(userUuid);
+    }
+
+    public void clearRelatedUsers() {
+        this.relatedUserUuids.clear();
+    }
+
+    public boolean hasRelatedUser(UUID userUuid) {
+        return this.relatedUserUuids.contains(userUuid);
     }
 
     // Getters and Setters
@@ -207,12 +233,27 @@ public class Transaction {
         this.relatedCustomerUuid = relatedCustomerUuid;
     }
 
-    public UUID getRelatedUserUuid() {
-        return relatedUserUuid;
+    // 修改：getter和setter改为处理Set<UUID>
+    public Set<UUID> getRelatedUserUuids() {
+        return relatedUserUuids;
     }
 
+    public void setRelatedUserUuids(Set<UUID> relatedUserUuids) {
+        this.relatedUserUuids = relatedUserUuids != null ? relatedUserUuids : new HashSet<>();
+    }
+
+    // 保留旧方法以兼容现有代码（已标记为过时）
+    @Deprecated
+    public UUID getRelatedUserUuid() {
+        return relatedUserUuids.isEmpty() ? null : relatedUserUuids.iterator().next();
+    }
+
+    @Deprecated
     public void setRelatedUserUuid(UUID relatedUserUuid) {
-        this.relatedUserUuid = relatedUserUuid;
+        this.relatedUserUuids.clear();
+        if (relatedUserUuid != null) {
+            this.relatedUserUuids.add(relatedUserUuid);
+        }
     }
 
     public PaymentMethod getPaymentMethod() {
