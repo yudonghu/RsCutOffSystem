@@ -17,6 +17,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -50,7 +51,10 @@ public class TransactionService {
         transaction.setDescription(request.getDescription());
         transaction.setNotes(request.getNotes());
         transaction.setRelatedCustomerUuid(request.getRelatedCustomerUuid());
-        transaction.setRelatedUserUuid(request.getRelatedUserUuid());
+
+        // 设置关联员工（多用户支持）
+        transaction.setRelatedUserUuids(request.getRelatedUserUuids());
+
         transaction.setPaymentMethod(request.getPaymentMethod());
         transaction.setPaymentReference(request.getPaymentReference());
         transaction.setStatus(Transaction.TransactionStatus.PENDING);
@@ -162,6 +166,114 @@ public class TransactionService {
     }
 
     /**
+     * 根据多个员工获取交易历史
+     */
+    @Transactional(readOnly = true)
+    public List<TransactionDTO.TransactionResponse> getMultipleUsersTransactionHistory(List<UUID> userUuids) {
+        return transactionRepository.findMultipleUsersTransactionHistory(userUuids).stream()
+                .map(TransactionDTO.TransactionResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 获取指定员工在指定日期的交易
+     */
+    @Transactional(readOnly = true)
+    public List<TransactionDTO.TransactionResponse> getUserTransactionsOnDate(UUID userUuid, LocalDate date) {
+        return transactionRepository.findUserTransactionsOnDate(userUuid, date).stream()
+                .map(TransactionDTO.TransactionResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * 检查员工是否参与了某个交易
+     */
+    @Transactional(readOnly = true)
+    public boolean isUserRelatedToTransaction(UUID transactionUuid, UUID userUuid) {
+        return transactionRepository.isUserRelatedToTransaction(transactionUuid, userUuid);
+    }
+
+    /**
+     * 向交易添加员工
+     */
+    public TransactionDTO.TransactionResponse addUserToTransaction(UUID transactionUuid, UUID userUuid) {
+        Transaction transaction = transactionRepository.findById(transactionUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("交易未找到: " + transactionUuid));
+
+        if (transaction.getIsIncludedInCutOff()) {
+            throw new ValidationException("已包含在日结中的交易不能修改");
+        }
+
+        // 添加员工到关联用户集合
+        transaction.addRelatedUser(userUuid);
+
+        Transaction updatedTransaction = transactionRepository.save(transaction);
+        return new TransactionDTO.TransactionResponse(updatedTransaction);
+    }
+
+    /**
+     * 从交易中移除员工
+     */
+    public TransactionDTO.TransactionResponse removeUserFromTransaction(UUID transactionUuid, UUID userUuid) {
+        Transaction transaction = transactionRepository.findById(transactionUuid)
+                .orElseThrow(() -> new ResourceNotFoundException("交易未找到: " + transactionUuid));
+
+        if (transaction.getIsIncludedInCutOff()) {
+            throw new ValidationException("已包含在日结中的交易不能修改");
+        }
+
+        // 检查是否是要移除的用户
+        if (!transaction.hasRelatedUser(userUuid)) {
+            throw new ValidationException("该员工未参与此交易");
+        }
+
+        // 检查至少保留一个员工
+        if (transaction.getRelatedUserUuids().size() <= 1) {
+            throw new ValidationException("交易至少需要关联一个员工");
+        }
+
+        // 移除关联用户
+        transaction.removeRelatedUser(userUuid);
+
+        Transaction updatedTransaction = transactionRepository.save(transaction);
+        return new TransactionDTO.TransactionResponse(updatedTransaction);
+    }
+
+    /**
+     * 按员工统计交易数量
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, Long> getTransactionCountByUser(LocalDate startDate, LocalDate endDate) {
+        List<Object[]> results = transactionRepository.countTransactionsByUser(startDate, endDate);
+
+        Map<UUID, Long> countMap = new HashMap<>();
+        for (Object[] result : results) {
+            UUID userUuid = (UUID) result[0];
+            Long count = (Long) result[1];
+            countMap.put(userUuid, count);
+        }
+
+        return countMap;
+    }
+
+    /**
+     * 按员工统计交易金额
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, BigDecimal> getTransactionAmountByUser(LocalDate startDate, LocalDate endDate) {
+        List<Object[]> results = transactionRepository.sumTransactionAmountsByUser(startDate, endDate);
+
+        Map<UUID, BigDecimal> amountMap = new HashMap<>();
+        for (Object[] result : results) {
+            UUID userUuid = (UUID) result[0];
+            BigDecimal amount = (BigDecimal) result[1];
+            amountMap.put(userUuid, amount);
+        }
+
+        return amountMap;
+    }
+
+    /**
      * 获取待确认的交易
      */
     @Transactional(readOnly = true)
@@ -208,6 +320,11 @@ public class TransactionService {
 
         if (request.getRelatedCustomerUuid() != null) {
             transaction.setRelatedCustomerUuid(request.getRelatedCustomerUuid());
+        }
+
+        // 更新关联员工
+        if (request.getRelatedUserUuids() != null && !request.getRelatedUserUuids().isEmpty()) {
+            transaction.setRelatedUserUuids(request.getRelatedUserUuids());
         }
 
         if (request.getPaymentMethod() != null) {
